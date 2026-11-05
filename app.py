@@ -1,8 +1,13 @@
 import os
 import sqlite3
 from flask import Flask, jsonify, render_template_string, request, session
+from werkzeug.middleware.proxy_fix import ProxyFix  # <--- 1. Importe o ProxyFix
 
 app = Flask(__name__)
+
+
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
 app.secret_key = 'sua_chave_secreta_super_segura_aqui'
 DB_NAME = 'database.db'
 
