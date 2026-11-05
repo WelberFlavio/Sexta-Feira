@@ -1,0 +1,315 @@
+import pandas as pd
+
+# Caminho da planilha
+caminho = r"C:\Users\Santech\Desktop\Meg\meg.xlsx"
+
+# Lê TODAS as abas do arquivo
+todas_abas = pd.read_excel(caminho, sheet_name=None)
+
+print("\n========== RESULTADO FINAL ==========\n")
+
+# Percorrer aba por aba
+for nome_aba, df in todas_abas.items():
+    print(f"\n=== ABA: {nome_aba.upper()} ===\n")
+
+    # Tentar converter colunas para número
+    colunas_numericas = []
+    for col in df.columns:
+        try:
+            # Testa se a coluna é numérica
+            pd.to_numeric(df[col].dropna())
+            colunas_numericas.append(col)
+        except:
+            pass
+
+    if not colunas_numericas:
+        print("Nenhuma coluna numérica encontrada nesta aba.")
+        continue
+
+    # Para cada coluna numérica, pegar o último número da ordem
+    for col in colunas_numericas:
+        valores = pd.to_numeric(df[col].dropna())
+
+        if len(valores) == 0:
+            print(f"Coluna {col}: vazia")
+            continue
+
+        proximo = valores.iloc[-1]   # último número da ordem
+
+        print(f"Coluna '{col}': próximo número na ordem é **{proximo}**")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+mport pandas as pd
+
+# caminho correto do arquivo
+arquivo = r"C:\Users\Santech\Desktop\Meg\Meg.xlsx"
+
+# carrega todas as abas
+todas_abas = pd.read_excel(arquivo, sheet_name=None)
+
+def proximo_numero(sequencia):
+    """
+    Recebe uma sequência numérica e retorna o próximo número baseado na diferença média.
+    """
+    if len(sequencia) < 2:
+        return None
+
+    # calcula diferença entre números consecutivos
+    difs = []
+    for i in range(1, len(sequencia)):
+        if pd.notna(sequencia[i]) and pd.notna(sequencia[i-1]):
+            difs.append(sequencia[i] - sequencia[i-1])
+
+    if len(difs) == 0:
+        return None
+
+    media = sum(difs) / len(difs)
+    return sequencia.iloc[-1] + media
+
+
+print("===== RESULTADOS POR ABA =====\n")
+
+for nome_aba, df in todas_abas.items():
+    print(f"\n=== ABA: {nome_aba} ===\n")
+
+    for coluna in df.columns:
+
+        # tenta converter a coluna para números
+        try:
+            valores = pd.to_numeric(df[coluna], errors='coerce').dropna()
+        except:
+            print(f"Coluna '{coluna}': erro ao ler")
+            continue
+
+        if len(valores) == 0:
+            print(f"Coluna '{coluna}': ignorada (sem números)")
+            continue
+
+        # tenta calcular o próximo número
+        try:
+            prox = proximo_numero(valores)
+            if prox is None:
+                print(f"Coluna '{coluna}': erro ao calcular")
+            else:
+                print(f"Coluna '{coluna}': próximo número na ordem é **{round(prox)}**")
+        except:
+            print(f"Coluna '{coluna}': erro ao calcular")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import pandas as pd
+import numpy as np
+from sklearn.linear_model import LinearRegression
+import math
+import warnings
+
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
+arquivo = r"C:\Users\Santech\Desktop\Meg\Meg.xlsx"
+
+# Carrega todas as abas
+todas_abas = pd.read_excel(arquivo, sheet_name=None)
+
+# Funções auxiliares
+def mae(a, b):
+    a = np.array(a, dtype=float)
+    b = np.array(b, dtype=float)
+    return np.nanmean(np.abs(a - b))
+
+def próxima_por_ultimo(valores):
+    return valores.iloc[-1]
+
+def próxima_por_ultimo_diff(valores):
+    if len(valores) < 2:
+        return None
+    diff = valores.iloc[-1] - valores.iloc[-2]
+    return valores.iloc[-1] + diff
+
+def próxima_por_media_diffs(valores):
+    if len(valores) < 2:
+        return None
+    difs = np.diff(valores)
+    return valores.iloc[-1] + np.nanmean(difs)
+
+def próxima_por_regressao_linear(valores):
+    if len(valores) < 2:
+        return None
+    X = np.arange(len(valores)).reshape(-1,1)
+    y = valores.values.reshape(-1,1)
+    model = LinearRegression().fit(X, y)
+    next_x = np.array([[len(valores)]])
+    pred = model.predict(next_x)[0,0]
+    # se pred for quase inteiro, arredonda para inteiro
+    return float(pred)
+
+def próxima_por_ciclo(valores, max_period=14):
+    """
+    tenta encontrar um período p (2..max_period) tal que os últimos valores
+    se repetem com esse período. Se encontrar, retorna o próximo valor da repetição.
+    Caso contrário retorna None.
+    """
+    n = len(valores)
+    if n < 3:
+        return None
+    arr = valores.values
+    # testar períodos de 1 até max_period (mas não maior que n-1)
+    max_p = min(max_period, n-1)
+    for p in range(1, max_p+1):
+        # verificar se os últimos k valores seguem o padrão de comprimento p
+        ok = True
+        # checar sempre a repetição sobre o prefixo (comparar arr[:-p] com arr[p:])
+        # aqui avaliamos se arr[i] == arr[i-p] para grande parte dos dados
+        matches = 0
+        checks = 0
+        for i in range(p, n):
+            checks += 1
+            if arr[i] == arr[i-p]:
+                matches += 1
+        # se a proporção de matches for alta o suficiente, consideramos detectado
+        if checks>0 and (matches / checks) >= 0.85:
+            # próximo índice é n, corresponde ao valor arr[n-p] se existir
+            idx = n - p
+            if idx >= 0:
+                return float(arr[idx])
+    return None
+
+# Estratégias a testar
+strategies = {
+    "Último valor": próxima_por_ultimo,
+    "Último diff": próxima_por_ultimo_diff,
+    "Média difs": próxima_por_media_diffs,
+    "Regressão linear": próxima_por_regressao_linear,
+    "Ciclo detectado": próxima_por_ciclo
+}
+
+# Guarda resultados para salvar em nova aba
+resultados = []
+
+print("===== RESULTADOS POR ABA =====\n")
+
+for nome_aba, df in todas_abas.items():
+    print(f"\n=== ABA: {nome_aba} ===\n")
+
+    for coluna in df.columns:
+        # converter para numérico (coerce -> NaN para não-numéricos)
+        valores = pd.to_numeric(df[coluna], errors='coerce').dropna()
+        if len(valores) == 0:
+            print(f"Coluna '{coluna}': ignorada (sem números)")
+            resultados.append((nome_aba, coluna, "IGNORADA", "", ""))
+            continue
+
+        # Se poucos pontos, usar último valor direto
+        n = len(valores)
+        holdout_k = 3 if n >= 6 else max(1, n//3)  # tamanho do conjunto de validação
+        if holdout_k >= n:
+            holdout_k = n-1
+        train = valores.iloc[:n-holdout_k] if holdout_k>0 else valores
+        valid = valores.iloc[n-holdout_k:] if holdout_k>0 else pd.Series(dtype=float)
+
+        best_method = None
+        best_pred = None
+        best_mae = math.inf
+
+        # testar cada estratégia
+        for name, func in strategies.items():
+            try:
+                # prever usando dados de treino
+                pred = func(train if holdout_k>0 else valores)
+                if pred is None or (isinstance(pred, float) and (math.isnan(pred) or math.isinf(pred))):
+                    continue
+
+                # validar: calcular previsões para pontos do holdout usando walk-forward simples
+                # Para validação simples, simulamos: para i em range(len(valid)):
+                #    construir seq = valores[:n-holdout_k + i], prever next, comparar com valid[i]
+                errors = []
+                if holdout_k > 0:
+                    for i in range(len(valid)):
+                        seq = valores.iloc[:n-holdout_k+i]
+                        p = func(seq)
+                        if p is None:
+                            errors.append(np.nan)
+                        else:
+                            errors.append(abs(p - valid.iloc[i]))
+                    current_mae = np.nanmean(errors)
+                else:
+                    current_mae = 0.0  # sem validação possível -> assume perfeito para ranking
+
+                # escolher melhor por MAE menor
+                if current_mae < best_mae:
+                    best_mae = current_mae
+                    best_method = name
+                    best_pred = pred
+            except Exception:
+                continue
+
+        # Fallbacks se nada escolheu
+        if best_method is None:
+            # use último valor
+            best_method = "Último valor (fallback)"
+            best_pred = float(valores.iloc[-1])
+            best_mae = float('nan')
+
+        # arredondar se todos os dados inteiros -> prever inteiro
+        if np.all(np.equal(np.mod(valores,1), 0)):
+            best_pred = int(round(best_pred))
+
+        print(f"Coluna '{coluna}': próximo número = **{best_pred}**  (método: {best_method}; MAE val.: {np.round(best_mae,3) if not math.isnan(best_mae) else 'N/A'})")
+
+        resultados.append((nome_aba, coluna, best_pred, best_method, np.round(best_mae,3) if not math.isnan(best_mae) else "N/A"))
+
+# salvar resultados em nova aba 'Resultados'
+df_res = pd.DataFrame(resultados, columns=["Aba","Coluna","Proximo","Metodo","MAE_valid"])
+with pd.ExcelWriter(arquivo, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+    df_res.to_excel(writer, sheet_name="Resultados", index=False)
+
+print("\n===== SALVO: Aba 'Resultados' criada/atualizada no mesmo arquivo =====")

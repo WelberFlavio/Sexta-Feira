@@ -1,0 +1,509 @@
+import os
+import sqlite3
+from flask import Flask, jsonify, render_template_string, request, session
+
+app = Flask(__name__)
+app.secret_key = 'sua_chave_secreta_super_segura_aqui'
+DB_NAME = 'database.db'
+
+
+# Inicializa o Banco de Dados SQLite
+def init_db():
+  conn = sqlite3.connect(DB_NAME)
+  cursor = conn.cursor()
+  # Tabela de Publicações (Feed)
+  cursor.execute('''
+        CREATE TABLE IF NOT EXISTS posts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            author TEXT NOT NULL,
+            likes INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+  # Tabela de Comentários
+  cursor.execute('''
+        CREATE TABLE IF NOT EXISTS comments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER,
+            author TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (post_id) REFERENCES posts (id)
+        )
+    ''')
+  # Tabela do Chat
+  cursor.execute('''
+        CREATE TABLE IF NOT EXISTS chat (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            author TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+  conn.commit()
+  conn.close()
+
+
+init_db()
+
+# Template HTML, CSS e JavaScript integrados
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comunidade App</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --border: #e2e8f0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        header h1 { margin: 0; font-size: 1.4rem; }
+        .user-box { display: flex; gap: 8px; align-items: center; font-size: 0.9rem; }
+        .user-box input { padding: 5px 10px; border-radius: 4px; border: 1px solid #ccc; }
+        
+        .container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+        }
+        @media(max-width: 768px) {
+            .container { grid-template-columns: 1fr; }
+        }
+        
+        .card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid var(--border);
+        }
+        h2 { margin-top: 0; font-size: 1.1rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; color: #334155; }
+        
+        input[type="text"], input[type="password"], textarea {
+            width: 100%;
+            padding: 8px 10px;
+            margin-top: 5px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover { background: var(--primary-hover); }
+        
+        .admin-section { border-left: 4px solid #ef4444; }
+        
+        .post-item {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+        }
+        .post-meta { font-size: 0.8rem; color: #64748b; margin-bottom: 0.3rem; }
+        .post-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 0.3rem; }
+        .post-actions { display: flex; gap: 10px; margin-top: 0.5rem; align-items: center; }
+        
+        .comments-box {
+            margin-top: 0.8rem;
+            background: #f1f5f9;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .comment-item { font-size: 0.85rem; margin-bottom: 4px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 4px; }
+        
+        .chat-container {
+            height: 320px;
+            overflow-y: scroll;
+            border: 1px solid var(--border);
+            padding: 10px;
+            background: #fafafa;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .chat-msg { background: #e0e7ff; padding: 6px 10px; border-radius: 6px; font-size: 0.85rem; }
+        .chat-msg strong { color: var(--primary); }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📢 Comunidade & Chat</h1>
+        <div class="user-box">
+            <span>Seu Apelido:</span>
+            <input type="text" id="username" value="Visitante" onchange="saveUsername()">
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Coluna Esquerda: Feed e Painel Admin -->
+        <div>
+            <!-- Painel Admin -->
+            <div class="card admin-section">
+                <h2>Painel do Administrador</h2>
+                <div id="admin-login-ui">
+                    <p style="font-size:0.85rem; color:#64748b;">Apenas administradores autorizados podem publicar.</p>
+                    <input type="password" id="admin-pass" placeholder="Senha de Admin">
+                    <button onclick="loginAdmin()">Entrar como Admin</button>
+                </div>
+                <div id="admin-post-ui" style="display:none;">
+                    <p style="color: #16a34a; font-weight: bold; font-size: 0.85rem;">✔ Modo Admin Ativo</p>
+                    <label>Título da Publicação:</label>
+                    <input type="text" id="post-title">
+                    <label>Conteúdo:</label>
+                    <textarea id="post-content" rows="3"></textarea>
+                    <button onclick="createPost()">Publicar no Feed</button>
+                    <button onclick="logoutAdmin()" style="background:#64748b; margin-left:5px;">Sair</button>
+                </div>
+            </div>
+
+            <!-- Feed de Publicações -->
+            <div class="card">
+                <h2>Feed de Publicações</h2>
+                <div id="feed-container">Carregando feed...</div>
+            </div>
+        </div>
+
+        <!-- Coluna Direita: Chat em Tempo Real -->
+        <div>
+            <div class="card">
+                <h2>Chat Global</h2>
+                <div class="chat-container" id="chat-box">Carregando chat...</div>
+                <input type="text" id="chat-input" placeholder="Digite sua mensagem..." onkeypress="handleChatEnter(event)">
+                <button onclick="sendChatMessage()" style="width: 100%;">Enviar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function saveUsername() {
+            const name = document.getElementById('username').value.trim();
+            if(name) localStorage.setItem('app_user', name);
+        }
+
+        function getUsername() {
+            return localStorage.getItem('app_user') || document.getElementById('username').value || 'Visitante';
+        }
+
+        window.onload = () => {
+            const saved = localStorage.getItem('app_user');
+            if(saved) document.getElementById('username').value = saved;
+            loadFeed();
+            loadChat();
+            // Atualiza o feed e o chat automaticamente a cada 3 segundos
+            setInterval(() => {
+                loadFeed();
+                loadChat();
+            }, 3000);
+        };
+
+        // --- ADMIN ---
+        function loginAdmin() {
+            const pass = document.getElementById('admin-pass').value;
+            fetch('/api/admin/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({password: pass})
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    document.getElementById('admin-login-ui').style.display = 'none';
+                    document.getElementById('admin-post-ui').style.display = 'block';
+                } else {
+                    alert('Senha incorreta!');
+                }
+            });
+        }
+
+        function logoutAdmin() {
+            fetch('/api/admin/logout', {method: 'POST'}).then(() => {
+                document.getElementById('admin-login-ui').style.display = 'block';
+                document.getElementById('admin-post-ui').style.display = 'none';
+                document.getElementById('admin-pass').value = '';
+            });
+        }
+
+        function createPost() {
+            const title = document.getElementById('post-title').value;
+            const content = document.getElementById('post-content').value;
+            if(!title || !content) { alert('Preencha todos os campos!'); return; }
+
+            fetch('/api/posts', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({title, content, author: getUsername()})
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    document.getElementById('post-title').value = '';
+                    document.getElementById('post-content').value = '';
+                    loadFeed();
+                } else {
+                    alert(data.error);
+                }
+            });
+        }
+
+        // --- FEED & INTERAÇÕES ---
+        function loadFeed() {
+            fetch('/api/posts')
+            .then(res => res.json())
+            .then(posts => {
+                const container = document.getElementById('feed-container');
+                if(posts.length === 0) {
+                    container.innerHTML = '<p style="color:#64748b; font-size:0.9rem;">Nenhuma publicação no momento.</p>';
+                    return;
+                }
+                let html = '';
+                posts.forEach(p => {
+                    let commentsHtml = '';
+                    if(p.comments && p.comments.length > 0) {
+                        p.comments.forEach(c => {
+                            commentsHtml += `<div class="comment-item"><strong>${c.author}:</strong> ${c.content}</div>`;
+                        });
+                    } else {
+                        commentsHtml = '<div style="font-size:0.8rem; color:#94a3b8;">Nenhum comentário ainda.</div>';
+                    }
+
+                    html += `
+                        <div class="post-item">
+                            <div class="post-meta">Por <strong>${p.author}</strong> em ${p.created_at}</div>
+                            <div class="post-title">${p.title}</div>
+                            <div style="font-size: 0.95rem; margin-bottom: 8px;">${p.content}</div>
+                            <div class="post-actions">
+                                <button onclick="likePost(${p.id})" style="background:#10b981; padding:4px 10px; font-size:0.8rem;">❤️ Curtir (${p.likes})</button>
+                            </div>
+                            <div class="comments-box">
+                                <div style="font-size:0.85rem; font-weight:bold; margin-bottom:4px;">Comentários:</div>
+                                <div style="margin-bottom:6px;">${commentsHtml}</div>
+                                <div style="display:flex; gap:5px;">
+                                    <input type="text" id="comment-input-${p.id}" placeholder="Escreva um comentário..." style="margin:0; padding:4px 8px; font-size:0.8rem;">
+                                    <button onclick="addComment(${p.id})" style="padding:4px 10px; font-size:0.8rem;">Enviar</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            });
+        }
+
+        function likePost(id) {
+            fetch(`/api/posts/${id}/like`, {method: 'POST'}).then(() => loadFeed());
+        }
+
+        function addComment(postId) {
+            const input = document.getElementById(`comment-input-${postId}`);
+            const content = input.value.trim();
+            if(!content) return;
+
+            fetch(`/api/posts/${postId}/comment`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({author: getUsername(), content})
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    input.value = '';
+                    loadFeed();
+                }
+            });
+        }
+
+        // --- CHAT ---
+        function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const content = input.value.trim();
+            if(!content) return;
+
+            fetch('/api/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({author: getUsername(), content})
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    input.value = '';
+                    loadChat();
+                    const chatBox = document.getElementById('chat-box');
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+            });
+        }
+
+        function handleChatEnter(e) {
+            if(e.key === 'Enter') sendChatMessage();
+        }
+
+        function loadChat() {
+            fetch('/api/chat')
+            .then(res => res.json())
+            .then(msgs => {
+                const box = document.getElementById('chat-box');
+                let html = '';
+                msgs.forEach(m => {
+                    html += `<div class="chat-msg"><strong>${m.author}:</strong> ${m.content}</div>`;
+                });
+                box.innerHTML = html || '<div style="color:#94a3b8; font-size:0.85rem;">Nenhuma mensagem no chat.</div>';
+            });
+        }
+    </script>
+</body>
+</html>
+"""
+
+
+# --- ROTAS DA API ---
+@app.route('/')
+def index():
+  return render_template_string(HTML_TEMPLATE)
+
+
+@app.route('/api/admin/login', methods=['POST'])
+def admin_login():
+  data = request.get_json()
+  # Mude aqui a senha de administrador que desejar:
+  ADMIN_PASSWORD = 'minhasenhasecreta'
+  if data.get('password') == ADMIN_PASSWORD:
+    session['is_admin'] = True
+    return jsonify({'success': True})
+  return jsonify({'success': False})
+
+
+@app.route('/api/admin/logout', methods=['POST'])
+def admin_logout():
+  session.pop('is_admin', None)
+  return jsonify({'success': True})
+
+
+@app.route('/api/posts', methods=['GET', 'POST'])
+def manage_posts():
+  conn = sqlite3.connect(DB_NAME)
+  conn.row_factory = sqlite3.Row
+  cursor = conn.cursor()
+
+  if request.method == 'POST':
+    if not session.get('is_admin'):
+      return (
+          jsonify({
+              'success': False,
+              'error': 'Apenas administradores podem publicar.',
+          }),
+          403,
+      )
+    data = request.get_json()
+    cursor.execute(
+        'INSERT INTO posts (title, content, author) VALUES (?, ?, ?)',
+        (data['title'], data['content'], data['author']),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+  # Buscar posts com comentários aninhados
+  cursor.execute('SELECT * FROM posts ORDER BY id DESC')
+  posts_rows = cursor.fetchall()
+  posts = []
+  for row in posts_rows:
+    post = dict(row)
+    cursor.execute(
+        'SELECT * FROM comments WHERE post_id = ? ORDER BY id ASC',
+        (post['id'],),
+    )
+    post['comments'] = [dict(c) for c in cursor.fetchall()]
+    posts.append(post)
+
+  conn.close()
+  return jsonify(posts)
+
+
+@app.route('/api/posts/<int:post_id>/like', methods=['POST'])
+def like_post(post_id):
+  conn = sqlite3.connect(DB_NAME)
+  cursor = conn.cursor()
+  cursor.execute('UPDATE posts SET likes = likes + 1 WHERE id = ?', (post_id,))
+  conn.commit()
+  conn.close()
+  return jsonify({'success': True})
+
+
+@app.route('/api/posts/<int:post_id>/comment', methods=['POST'])
+def add_comment(post_id):
+  data = request.get_json()
+  conn = sqlite3.connect(DB_NAME)
+  cursor = conn.cursor()
+  cursor.execute(
+      'INSERT INTO comments (post_id, author, content) VALUES (?, ?, ?)',
+      (post_id, data['author'], data['content']),
+  )
+  conn.commit()
+  conn.close()
+  return jsonify({'success': True})
+
+
+@app.route('/api/chat', methods=['GET', 'POST'])
+def manage_chat():
+  conn = sqlite3.connect(DB_NAME)
+  conn.row_factory = sqlite3.Row
+  cursor = conn.cursor()
+
+  if request.method == 'POST':
+    data = request.get_json()
+    cursor.execute(
+        'INSERT INTO chat (author, content) VALUES (?, ?)',
+        (data['author'], data['content']),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+  cursor.execute('SELECT * FROM chat ORDER BY id ASC LIMIT 50')
+  messages = [dict(row) for row in cursor.fetchall()]
+  conn.close()
+  return jsonify(messages)
+
+
+if __name__ == '__main__':
+  app.run(debug=True, host='0.0.0.0', port=5000)
