@@ -415,14 +415,7 @@ HTML_TEMPLATE = """
         <div class="login-wrapper">
             <!-- Lado esquerdo com a Logo da Igreja -->
             <div class="login-image-side">
-                <svg width="120" height="120" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom: 1rem; filter: drop-shadow(0 4px 12px rgba(37, 99, 235, 0.4));">
-                    <!-- Chama / Fogo -->
-                    <path d="M100 20C100 20 125 55 125 80C125 96.5685 111.569 110 95 110C85 110 77 104 72 96C68 110 80 125 95 125C117.091 125 135 107.091 135 85C135 55 100 20 100 20Z" fill="#F59E0B"/>
-                    <path d="M95 45C95 45 110 70 110 85C110 93.2843 103.284 100 95 100C90 100 86 97 83 93C80 102 88 110 95 110C108.807 110 120 98.8071 120 85C120 65 95 45 95 45Z" fill="#EF4444"/>
-                    <!-- Bíblia Aberta -->
-                    <path d="M40 120C65 115 90 125 100 130C110 125 135 115 160 120V140C135 135 110 145 100 150C90 145 65 135 40 140V120Z" fill="#3B82F6"/>
-                    <path d="M100 130V150" stroke="#FFFFFF" stroke-width="3"/>
-                </svg>
+                <img src="/static/logo.png" alt="ADEFS Logo" style="width: 120px; height: 120px; object-fit: contain; margin-bottom: 1rem; filter: drop-shadow(0 4px 12px rgba(37, 99, 235, 0.4));">
                 <h3>Assembleia de Deus</h3>
                 <p>Feira de Santana - ADEFS</p>
             </div>
