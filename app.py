@@ -88,7 +88,7 @@ HTML_TEMPLATE = """
             flex-direction: column;
         }
 
-        /* --- NOVO TEMA DE LOGIN (Inspirado no modelo + Azul ADEFS) --- */
+        /* --- TELA DE LOGIN --- */
         #login-screen {
             display: flex;
             justify-content: center;
@@ -112,7 +112,7 @@ HTML_TEMPLATE = """
 
         .login-image-side {
             flex: 1;
-            background: #090e1a;
+            background: #070e1c;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -123,23 +123,24 @@ HTML_TEMPLATE = """
         }
 
         .login-image-side img {
-            width: 120px;
-            height: 120px;
+            width: 130px;
+            height: 130px;
             object-fit: contain;
-            margin-bottom: 1rem;
-            filter: drop-shadow(0 4px 12px rgba(37, 99, 235, 0.4));
+            border-radius: 16px;
+            margin-bottom: 1.2rem;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
         }
 
         .login-image-side h3 {
             color: #ffffff;
-            font-size: 1.1rem;
+            font-size: 1.15rem;
             font-weight: 600;
             margin-bottom: 0.3rem;
         }
 
         .login-image-side p {
             color: var(--text-muted);
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             letter-spacing: 1px;
             text-transform: uppercase;
         }
@@ -190,7 +191,6 @@ HTML_TEMPLATE = """
 
         .form-group {
             margin-bottom: 1.2rem;
-            position: relative;
         }
 
         .form-group label {
@@ -413,9 +413,9 @@ HTML_TEMPLATE = """
     <!-- TELA DE LOGIN ESTILIZADA -->
     <div id="login-screen">
         <div class="login-wrapper">
-            <!-- Lado esquerdo com a Logo da Igreja -->
+            <!-- Lado esquerdo com a Logo Oficial embutida perfeitamente -->
             <div class="login-image-side">
-                <img src="/static/logo.png" alt="ADEFS Logo" style="width: 120px; height: 120px; object-fit: contain; margin-bottom: 1rem; filter: drop-shadow(0 4px 12px rgba(37, 99, 235, 0.4));">
+                <img src="https://i.ibb.co/6c9G67z/adefs-logo.png" alt="ADEFS Logo" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1544717305-2782549b5136?w=400';">
                 <h3>Assembleia de Deus</h3>
                 <p>Feira de Santana - ADEFS</p>
             </div>
@@ -789,7 +789,7 @@ def manage_posts():
           403,
       )
 
-    data = request.get_json()
+    data = request.get_json() 
     cursor.execute(
         'INSERT INTO posts (title, content, author) VALUES (?, ?, ?)',
         (data['title'], data['content'], session.get('user', 'Administrador')),
