@@ -57,20 +57,18 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comunidade & Chat App</title>
+    <title>ADEFS - Comunidade & Chat</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #6366f1;
-            --primary-hover: #4f46e5;
-            --primary-light: #e0e7ff;
-            --secondary: #06b6d4;
-            --bg: #0f172a;
-            --surface: #1e293b;
-            --surface-card: #334155;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #0b1329;
+            --surface: #111e38;
+            --surface-card: #1e293b;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
-            --border: #475569;
+            --border: #2a3d66;
             --accent-green: #10b981;
             --accent-red: #ef4444;
         }
@@ -90,34 +88,76 @@ HTML_TEMPLATE = """
             flex-direction: column;
         }
 
-        /* --- TELA DE LOGIN --- */
+        /* --- NOVO TEMA DE LOGIN (Inspirado no modelo + Azul ADEFS) --- */
         #login-screen {
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background: radial-gradient(circle at top left, #312e81, var(--bg));
-            padding: 1.5rem;
+            background: linear-gradient(135deg, #070d1d 0%, #172554 100%);
+            padding: 1rem;
         }
 
-        .login-card {
-            background: var(--surface);
-            padding: 2.5rem;
-            border-radius: 16px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
-            width: 100%;
-            max-width: 420px;
+        .login-wrapper {
+            display: flex;
+            background: rgba(17, 30, 56, 0.85);
+            backdrop-filter: blur(12px);
             border: 1px solid var(--border);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            width: 100%;
+            max-width: 850px;
+            overflow: hidden;
         }
 
-        .login-card h2 {
+        .login-image-side {
+            flex: 1;
+            background: #090e1a;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2.5rem;
+            border-right: 1px solid var(--border);
             text-align: center;
+        }
+
+        .login-image-side img {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 4px 12px rgba(37, 99, 235, 0.4));
+        }
+
+        .login-image-side h3 {
+            color: #ffffff;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+        }
+
+        .login-image-side p {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .login-form-side {
+            flex: 1.2;
+            padding: 3rem 2.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .login-form-side h2 {
             font-size: 1.8rem;
             font-weight: 700;
-            background: linear-gradient(to right, #818cf8, #c084fc);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: #ffffff;
             margin-bottom: 1.5rem;
+            text-align: left;
         }
 
         .tab-buttons {
@@ -126,33 +166,36 @@ HTML_TEMPLATE = """
             padding: 4px;
             border-radius: 10px;
             margin-bottom: 1.5rem;
+            border: 1px solid var(--border);
         }
 
         .tab-btn {
             flex: 1;
-            padding: 10px;
+            padding: 8px;
             background: none;
             border: none;
             font-weight: 600;
             cursor: pointer;
             color: var(--text-muted);
             border-radius: 8px;
+            font-size: 0.85rem;
             transition: all 0.2s ease;
         }
 
         .tab-btn.active {
             background: var(--primary);
             color: white;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
         }
 
         .form-group {
             margin-bottom: 1.2rem;
+            position: relative;
         }
 
         .form-group label {
             display: block;
-            font-size: 0.85rem;
+            font-size: 0.82rem;
             font-weight: 500;
             margin-bottom: 6px;
             color: var(--text-muted);
@@ -172,11 +215,12 @@ HTML_TEMPLATE = """
 
         .form-group input:focus, input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
             border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
         }
 
         .btn-submit, .action-btn {
             width: 100%;
-            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            background: linear-gradient(135deg, #3b82f6, var(--primary));
             color: white;
             border: none;
             padding: 12px;
@@ -184,16 +228,19 @@ HTML_TEMPLATE = """
             font-weight: 600;
             cursor: pointer;
             transition: transform 0.1s ease, box-shadow 0.2s ease;
-            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+            margin-top: 5px;
         }
 
         .btn-submit:hover, .action-btn:hover {
             transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
         }
 
-        .btn-submit:active, .action-btn:active {
-            transform: translateY(0);
+        @media(max-width: 768px) {
+            .login-wrapper { flex-direction: column; max-width: 400px; }
+            .login-image-side { padding: 1.5rem; }
+            .login-form-side { padding: 2rem 1.5rem; }
         }
 
         /* --- DASHBOARD PRINCIPAL --- */
@@ -212,11 +259,12 @@ HTML_TEMPLATE = """
         }
 
         header h1 {
-            font-size: 1.4rem;
+            font-size: 1.3rem;
             font-weight: 700;
             display: flex;
             align-items: center;
             gap: 10px;
+            color: #60a5fa;
         }
 
         .user-info {
@@ -355,42 +403,52 @@ HTML_TEMPLATE = """
         }
 
         .chat-msg strong {
-            color: var(--secondary);
+            color: #60a5fa;
             margin-right: 5px;
         }
     </style>
 </head>
 <body>
 
-    <!-- TELA DE LOGIN / ENTRADA -->
+    <!-- TELA DE LOGIN ESTILIZADA -->
     <div id="login-screen">
-        <div class="login-card">
-            <h2>Comunidade App</h2>
-            <div class="tab-buttons">
-                <button class="tab-btn active" onclick="switchTab('visitor')" id="btn-tab-visitor">Visitante</button>
-                <button class="tab-btn" onclick="switchTab('admin')" id="btn-tab-admin">Admin</button>
+        <div class="login-wrapper">
+            <!-- Lado esquerdo com a Logo da Igreja -->
+            <div class="login-image-side">
+                <img src="https://i.ibb.co/6c9G67z/adefs-logo.png" alt="ADEFS Logo" onerror="this.src='https://raw.githubusercontent.com/WelberFlavio/Sexta-Feira/main/logo.png';">
+                <h3>Assembleia de Deus</h3>
+                <p>Feira de Santana - ADEFS</p>
             </div>
 
-            <!-- Form Visitante -->
-            <div id="form-visitor">
-                <div class="form-group">
-                    <label>Escolha o seu Apelido:</label>
-                    <input type="text" id="visitor-name" placeholder="Ex: João Silva">
+            <!-- Lado direito com o formulário de Login Azul -->
+            <div class="login-form-side">
+                <h2>Login</h2>
+                <div class="tab-buttons">
+                    <button class="tab-btn active" onclick="switchTab('visitor')" id="btn-tab-visitor">Visitante</button>
+                    <button class="tab-btn" onclick="switchTab('admin')" id="btn-tab-admin">Admin</button>
                 </div>
-                <button class="btn-submit" onclick="loginAsVisitor()">Entrar no Aplicativo</button>
-            </div>
 
-            <!-- Form Administrador -->
-            <div id="form-admin" style="display: none;">
-                <div class="form-group">
-                    <label>Usuário Admin:</label>
-                    <input type="text" id="admin-user" placeholder="Usuário">
+                <!-- Form Visitante -->
+                <div id="form-visitor">
+                    <div class="form-group">
+                        <label>Seu Apelido / Nome:</label>
+                        <input type="text" id="visitor-name" placeholder="Ex: Irmão João">
+                    </div>
+                    <button class="btn-submit" onclick="loginAsVisitor()">Entrar</button>
                 </div>
-                <div class="form-group">
-                    <label>Senha:</label>
-                    <input type="password" id="admin-pass" placeholder="Senha">
+
+                <!-- Form Administrador -->
+                <div id="form-admin" style="display: none;">
+                    <div class="form-group">
+                        <label>Usuário Admin:</label>
+                        <input type="text" id="admin-user" placeholder="Usuário">
+                    </div>
+                    <div class="form-group">
+                        <label>Senha:</label>
+                        <input type="password" id="admin-pass" placeholder="Senha">
+                    </div>
+                    <button class="btn-submit" onclick="loginAsAdmin()">Entrar como Admin</button>
                 </div>
-                <button class="btn-submit" onclick="loginAsAdmin()">Acessar como Admin</button>
             </div>
         </div>
     </div>
@@ -398,7 +456,7 @@ HTML_TEMPLATE = """
     <!-- TELA PRINCIPAL (DASHBOARD) -->
     <div id="app-screen">
         <header>
-            <h1>⚡ Comunidade & Chat</h1>
+            <h1>🔥 ADEFS - Comunidade & Chat</h1>
             <div class="user-info">
                 <span id="user-display-info"></span>
                 <button class="btn-logout" onclick="logout()">Sair</button>
@@ -416,7 +474,7 @@ HTML_TEMPLATE = """
                     </div>
                     <div class="form-group">
                         <label>Conteúdo:</label>
-                        <textarea id="post-content" rows="3" placeholder="Escreva a mensagem pública..."></textarea>
+                        <textarea id="post-content" rows="3" placeholder="Escreva o comunicado..."></textarea>
                     </div>
                     <button class="action-btn" onclick="createPost()">Publicar no Feed</button>
                 </div>
@@ -578,7 +636,7 @@ HTML_TEMPLATE = """
 
                     html += `
                         <div class="post-item">
-                            <div class="post-meta">Por <strong style="color:var(--secondary);">${p.author}</strong> • ${p.created_at}</div>
+                            <div class="post-meta">Por <strong style="color:#60a5fa;">${p.author}</strong> • ${p.created_at}</div>
                             <div class="post-title">${p.title}</div>
                             <div class="post-content">${p.content}</div>
                             <div class="post-actions">
