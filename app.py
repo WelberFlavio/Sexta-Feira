@@ -413,9 +413,9 @@ HTML_TEMPLATE = """
     <!-- TELA DE LOGIN ESTILIZADA -->
     <div id="login-screen">
         <div class="login-wrapper">
-            <!-- Lado esquerdo com a Logo Oficial embutida perfeitamente -->
+            <!-- Lado esquerdo com a Logo Local do Projeto -->
             <div class="login-image-side">
-                <img src="https://i.ibb.co/6c9G67z/adefs-logo.png" alt="ADEFS Logo" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1544717305-2782549b5136?w=400';">
+                <img src="/static/logo.png" alt="ADEFS Logo">
                 <h3>Assembleia de Deus</h3>
                 <p>Feira de Santana - ADEFS</p>
             </div>
@@ -789,7 +789,7 @@ def manage_posts():
           403,
       )
 
-    data = request.get_json() 
+    data = request.get_json()
     cursor.execute(
         'INSERT INTO posts (title, content, author) VALUES (?, ?, ?)',
         (data['title'], data['content'], session.get('user', 'Administrador')),
