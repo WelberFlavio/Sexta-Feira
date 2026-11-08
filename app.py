@@ -1,13 +1,10 @@
 import os
 import sqlite3
 from flask import Flask, jsonify, render_template_string, request, session
-from werkzeug.middleware.proxy_fix import ProxyFix  # <--- 1. Importe o ProxyFix
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
-
-
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
-
 app.secret_key = 'sua_chave_secreta_super_segura_aqui'
 DB_NAME = 'database.db'
 
@@ -17,7 +14,6 @@ def init_db():
   conn = sqlite3.connect(DB_NAME)
   cursor = conn.cursor()
 
-  # Tabela de Publicações (Feed)
   cursor.execute('''
         CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,7 +25,6 @@ def init_db():
         )
     ''')
 
-  # Tabela de Comentários
   cursor.execute('''
         CREATE TABLE IF NOT EXISTS comments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,7 +36,6 @@ def init_db():
         )
     ''')
 
-  # Tabela do Chat
   cursor.execute('''
         CREATE TABLE IF NOT EXISTS chat (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,29 +51,43 @@ def init_db():
 
 init_db()
 
-# Template HTML, CSS e JavaScript integrados com Tela de Login
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comunidade App</title>
+    <title>Comunidade & Chat App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #6366f1;
             --primary-hover: #4f46e5;
-            --bg: #f8fafc;
-            --card-bg: #ffffff;
-            --text: #1e293b;
-            --border: #e2e8f0;
+            --primary-light: #e0e7ff;
+            --secondary: #06b6d4;
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --surface-card: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #475569;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
         }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
+
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         /* --- TELA DE LOGIN --- */
@@ -87,163 +95,269 @@ HTML_TEMPLATE = """
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            min-height: 100vh;
+            background: radial-gradient(circle at top left, #312e81, var(--bg));
+            padding: 1.5rem;
         }
+
         .login-card {
-            background: white;
+            background: var(--surface);
             padding: 2.5rem;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
             width: 100%;
-            max-width: 400px;
-            box-sizing: border-box;
+            max-width: 420px;
+            border: 1px solid var(--border);
         }
-        .login-card h2 { margin-top: 0; text-align: center; color: var(--primary); margin-bottom: 1.5rem; }
-        .tab-buttons { display: flex; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border); }
+
+        .login-card h2 {
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1.5rem;
+        }
+
+        .tab-buttons {
+            display: flex;
+            background: var(--bg);
+            padding: 4px;
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+        }
+
         .tab-btn {
             flex: 1;
             padding: 10px;
             background: none;
             border: none;
-            font-weight: bold;
-            cursor: pointer;
-            color: #64748b;
-            transition: 0.2s;
-        }
-        .tab-btn.active { color: var(--primary); border-bottom: 2px solid var(--primary); margin-bottom: -2px; }
-
-        .form-group { margin-bottom: 1rem; }
-        .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; }
-        .form-group input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            box-sizing: border-box;
-            font-size: 0.95rem;
-        }
-        .btn-submit {
-            width: 100%;
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 6px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
+            color: var(--text-muted);
+            border-radius: 8px;
+            transition: all 0.2s ease;
         }
-        .btn-submit:hover { background: var(--primary-hover); }
 
-        /* --- TELA PRINCIPAL (DASHBOARD) --- */
-        #app-screen { display: none; }
-        header {
+        .tab-btn.active {
             background: var(--primary);
             color: white;
-            padding: 1rem 2rem;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--text-muted);
+        }
+
+        .form-group input, input[type="text"], input[type="password"], textarea {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-group input:focus, input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
+            border-color: var(--primary);
+        }
+
+        .btn-submit, .action-btn {
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-submit:hover, .action-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-submit:active, .action-btn:active {
+            transform: translateY(0);
+        }
+
+        /* --- DASHBOARD PRINCIPAL --- */
+        #app-screen { display: none; }
+
+        header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 1.2rem 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
-        header h1 { margin: 0; font-size: 1.3rem; }
-        .user-info { display: flex; gap: 15px; align-items: center; font-size: 0.9rem; }
+
+        header h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-info {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .admin-badge {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+            font-size: 0.75rem;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
         .btn-logout {
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 5px 12px;
-            border-radius: 4px;
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+            border: 1px solid var(--accent-red);
+            padding: 6px 14px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
         }
-        .btn-logout:hover { background: #dc2626; }
+
+        .btn-logout:hover {
+            background: var(--accent-red);
+            color: white;
+        }
 
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 2rem auto;
-            padding: 0 1rem;
+            padding: 0 1.5rem;
             display: grid;
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: 1.8fr 1.2fr;
             gap: 2rem;
+            width: 100%;
         }
-        @media(max-width: 768px) {
+
+        @media(max-width: 868px) {
             .container { grid-template-columns: 1fr; }
         }
 
         .card {
-            background: var(--card-bg);
-            border-radius: 10px;
+            background: var(--surface);
+            border-radius: 12px;
             padding: 1.5rem;
             margin-bottom: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
             border: 1px solid var(--border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
         }
-        .card h2 { margin-top: 0; font-size: 1.1rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; color: #334155; }
-        
-        input[type="text"], input[type="password"], textarea {
-            width: 100%;
-            padding: 8px 10px;
-            margin-top: 5px;
-            margin-bottom: 10px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            box-sizing: border-box;
-            font-family: inherit;
-        }
-        button.action-btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
+
+        .card h2 {
+            font-size: 1.15rem;
             font-weight: 600;
-            transition: background 0.2s;
-        }
-        button.action-btn:hover { background: var(--primary-hover); }
-
-        .admin-badge {
-            background: #10b981;
-            color: white;
-            font-size: 0.75rem;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-weight: bold;
-        }
-
-        .post-item {
+            margin-bottom: 1.2rem;
+            padding-bottom: 0.6rem;
             border-bottom: 1px solid var(--border);
-            padding-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* --- FEED & POSTS --- */
+        .post-item {
+            background: var(--bg);
+            border-radius: 10px;
+            padding: 1.2rem;
+            margin-bottom: 1.2rem;
+            border: 1px solid var(--border);
+        }
+
+        .post-meta {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-bottom: 0.4rem;
+        }
+
+        .post-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
+        }
+
+        .post-content {
+            font-size: 0.95rem;
+            color: #cbd5e1;
+            line-height: 1.5;
             margin-bottom: 1rem;
         }
-        .post-meta { font-size: 0.8rem; color: #64748b; margin-bottom: 0.3rem; }
-        .post-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 0.3rem; }
-        .post-actions { display: flex; gap: 10px; margin-top: 0.5rem; align-items: center; }
-        
+
         .comments-box {
-            margin-top: 0.8rem;
-            background: #f1f5f9;
-            padding: 10px;
-            border-radius: 6px;
-        }
-        .comment-item { font-size: 0.85rem; margin-bottom: 4px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 4px; }
-        
-        .chat-container {
-            height: 320px;
-            overflow-y: scroll;
+            margin-top: 1rem;
+            background: var(--surface);
+            padding: 1rem;
+            border-radius: 8px;
             border: 1px solid var(--border);
-            padding: 10px;
-            background: #fafafa;
-            border-radius: 6px;
-            margin-bottom: 10px;
+        }
+
+        .comment-item {
+            font-size: 0.88rem;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .comment-item:last-child { border-bottom: none; }
+
+        /* --- CHAT --- */
+        .chat-container {
+            height: 380px;
+            overflow-y: auto;
+            background: var(--bg);
+            border-radius: 10px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 12px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 10px;
         }
-        .chat-msg { background: #e0e7ff; padding: 6px 10px; border-radius: 6px; font-size: 0.85rem; }
-        .chat-msg strong { color: var(--primary); }
+
+        .chat-msg {
+            background: var(--surface);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            border-left: 3px solid var(--primary);
+        }
+
+        .chat-msg strong {
+            color: var(--secondary);
+            margin-right: 5px;
+        }
     </style>
 </head>
 <body>
@@ -251,22 +365,22 @@ HTML_TEMPLATE = """
     <!-- TELA DE LOGIN / ENTRADA -->
     <div id="login-screen">
         <div class="login-card">
-            <h2>Bem-vindo(a)</h2>
+            <h2>Comunidade App</h2>
             <div class="tab-buttons">
                 <button class="tab-btn active" onclick="switchTab('visitor')" id="btn-tab-visitor">Visitante</button>
-                <button class="tab-btn" onclick="switchTab('admin')" id="btn-tab-admin">Administrador</button>
+                <button class="tab-btn" onclick="switchTab('admin')" id="btn-tab-admin">Admin</button>
             </div>
 
-            <!-- Formulário Visitante -->
+            <!-- Form Visitante -->
             <div id="form-visitor">
                 <div class="form-group">
-                    <label>Escolha seu Apelido:</label>
+                    <label>Escolha o seu Apelido:</label>
                     <input type="text" id="visitor-name" placeholder="Ex: João Silva">
                 </div>
-                <button class="btn-submit" onclick="loginAsVisitor()">Entrar como Visitante</button>
+                <button class="btn-submit" onclick="loginAsVisitor()">Entrar no Aplicativo</button>
             </div>
 
-            <!-- Formulário Administrador -->
+            <!-- Form Administrador -->
             <div id="form-admin" style="display: none;">
                 <div class="form-group">
                     <label>Usuário Admin:</label>
@@ -276,15 +390,15 @@ HTML_TEMPLATE = """
                     <label>Senha:</label>
                     <input type="password" id="admin-pass" placeholder="Senha">
                 </div>
-                <button class="btn-submit" onclick="loginAsAdmin()">Entrar como Admin</button>
+                <button class="btn-submit" onclick="loginAsAdmin()">Acessar como Admin</button>
             </div>
         </div>
     </div>
 
-    <!-- TELA PRINCIPAL DO APLICATIVO -->
+    <!-- TELA PRINCIPAL (DASHBOARD) -->
     <div id="app-screen">
         <header>
-            <h1 id="header-title">📢 Comunidade & Chat</h1>
+            <h1>⚡ Comunidade & Chat</h1>
             <div class="user-info">
                 <span id="user-display-info"></span>
                 <button class="btn-logout" onclick="logout()">Sair</button>
@@ -292,32 +406,34 @@ HTML_TEMPLATE = """
         </header>
 
         <div class="container">
-            <!-- Coluna Esquerda: Painel Admin (Se for adm) e Feed -->
+            <!-- Feed e Painel de Admin -->
             <div>
-                <!-- Caixa de Publicação exclusiva para Admin -->
-                <div class="card" id="admin-post-card" style="display: none; border-left: 4px solid #10b981;">
-                    <h2>Nova Publicação (Painel Admin)</h2>
-                    <label>Título:</label>
-                    <input type="text" id="post-title" placeholder="Título da postagem">
-                    <label>Conteúdo:</label>
-                    <textarea id="post-content" rows="3" placeholder="Escreva o comunicado..."></textarea>
+                <div class="card" id="admin-post-card" style="display: none; border-left: 4px solid var(--accent-green);">
+                    <h2>📌 Painel do Administrador</h2>
+                    <div class="form-group">
+                        <label>Título da Publicação:</label>
+                        <input type="text" id="post-title" placeholder="Escreva o título...">
+                    </div>
+                    <div class="form-group">
+                        <label>Conteúdo:</label>
+                        <textarea id="post-content" rows="3" placeholder="Escreva a mensagem pública..."></textarea>
+                    </div>
                     <button class="action-btn" onclick="createPost()">Publicar no Feed</button>
                 </div>
 
-                <!-- Feed de Publicações -->
                 <div class="card">
-                    <h2>Feed de Publicações</h2>
-                    <div id="feed-container">Carregando feed...</div>
+                    <h2>📰 Feed de Publicações</h2>
+                    <div id="feed-container">Carregando conteúdos...</div>
                 </div>
             </div>
 
-            <!-- Coluna Direita: Chat Global -->
+            <!-- Chat Global -->
             <div>
                 <div class="card">
-                    <h2>Chat Global</h2>
+                    <h2>💬 Chat Global</h2>
                     <div class="chat-container" id="chat-box">Carregando chat...</div>
-                    <input type="text" id="chat-input" placeholder="Digite sua mensagem..." onkeypress="handleChatEnter(event)">
-                    <button class="action-btn" onclick="sendChatMessage()" style="width: 100%;">Enviar Mensagem</button>
+                    <input type="text" id="chat-input" placeholder="Digite uma mensagem..." onkeypress="handleChatEnter(event)">
+                    <button class="action-btn" onclick="sendChatMessage()" style="margin-top: 5px;">Enviar Mensagem</button>
                 </div>
             </div>
         </div>
@@ -386,7 +502,7 @@ HTML_TEMPLATE = """
 
             const infoEl = document.getElementById('user-display-info');
             if(role === 'admin') {
-                infoEl.innerHTML = `Logado como: <strong>${username}</strong> <span class="admin-badge">ADMIN</span>`;
+                infoEl.innerHTML = `<strong>${username}</strong> <span class="admin-badge">ADMIN</span>`;
                 document.getElementById('admin-post-card').style.display = 'block';
             } else {
                 infoEl.innerHTML = `Visitante: <strong>${username}</strong>`;
@@ -396,7 +512,6 @@ HTML_TEMPLATE = """
             loadFeed();
             loadChat();
             
-            // Intervalo de atualização automática a cada 3 segundos
             setInterval(() => {
                 loadFeed();
                 loadChat();
@@ -409,7 +524,6 @@ HTML_TEMPLATE = """
             });
         }
 
-        // Verifica ao carregar se já existe sessão ativa
         window.onload = () => {
             fetch('/api/session')
             .then(res => res.json())
@@ -420,7 +534,6 @@ HTML_TEMPLATE = """
             });
         };
 
-        // --- POSTS & FEED ---
         function createPost() {
             const title = document.getElementById('post-title').value;
             const content = document.getElementById('post-content').value;
@@ -449,7 +562,7 @@ HTML_TEMPLATE = """
             .then(posts => {
                 const container = document.getElementById('feed-container');
                 if(posts.length === 0) {
-                    container.innerHTML = '<p style="color:#64748b; font-size:0.9rem;">Nenhuma publicação no momento.</p>';
+                    container.innerHTML = '<p style="color:var(--text-muted); font-size:0.9rem;">Nenhuma publicação no momento.</p>';
                     return;
                 }
                 let html = '';
@@ -460,23 +573,23 @@ HTML_TEMPLATE = """
                             commentsHtml += `<div class="comment-item"><strong>${c.author}:</strong> ${c.content}</div>`;
                         });
                     } else {
-                        commentsHtml = '<div style="font-size:0.8rem; color:#94a3b8;">Nenhum comentário ainda.</div>';
+                        commentsHtml = '<div style="font-size:0.8rem; color:var(--text-muted);">Nenhum comentário ainda.</div>';
                     }
 
                     html += `
                         <div class="post-item">
-                            <div class="post-meta">Por <strong style="color:var(--primary);">${p.author}</strong> em ${p.created_at}</div>
+                            <div class="post-meta">Por <strong style="color:var(--secondary);">${p.author}</strong> • ${p.created_at}</div>
                             <div class="post-title">${p.title}</div>
-                            <div style="font-size: 0.95rem; margin-bottom: 8px;">${p.content}</div>
+                            <div class="post-content">${p.content}</div>
                             <div class="post-actions">
-                                <button onclick="likePost(${p.id})" class="action-btn" style="background:#10b981; padding:4px 10px; font-size:0.8rem;">❤️ Curtir (${p.likes})</button>
+                                <button onclick="likePost(${p.id})" class="action-btn" style="background:rgba(16, 185, 129, 0.2); border:1px solid var(--accent-green); color:var(--accent-green); width:auto; padding:5px 12px; font-size:0.85rem;">❤️ Curtir (${p.likes})</button>
                             </div>
                             <div class="comments-box">
-                                <div style="font-size:0.85rem; font-weight:bold; margin-bottom:4px;">Comentários:</div>
-                                <div style="margin-bottom:6px;">${commentsHtml}</div>
-                                <div style="display:flex; gap:5px;">
-                                    <input type="text" id="comment-input-${p.id}" placeholder="Escreva um comentário..." style="margin:0; padding:4px 8px; font-size:0.8rem;">
-                                    <button onclick="addComment(${p.id})" class="action-btn" style="padding:4px 10px; font-size:0.8rem;">Enviar</button>
+                                <div style="font-size:0.85rem; font-weight:600; margin-bottom:6px;">Comentários:</div>
+                                <div style="margin-bottom:8px;">${commentsHtml}</div>
+                                <div style="display:flex; gap:8px;">
+                                    <input type="text" id="comment-input-${p.id}" placeholder="Escreva um comentário..." style="margin:0; padding:8px 10px; font-size:0.85rem;">
+                                    <button onclick="addComment(${p.id})" class="action-btn" style="width:auto; padding:8px 14px; font-size:0.85rem;">Enviar</button>
                                 </div>
                             </div>
                         </div>
@@ -498,7 +611,7 @@ HTML_TEMPLATE = """
             fetch(`/api/posts/${postId}/comment`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({content})
+                body: JSON.stringify({author: currentUser, content: content})
             })
             .then(res => res.json())
             .then(data => {
@@ -509,7 +622,6 @@ HTML_TEMPLATE = """
             });
         }
 
-        // --- CHAT GLOBAL ---
         function sendChatMessage() {
             const input = document.getElementById('chat-input');
             const content = input.value.trim();
@@ -518,7 +630,7 @@ HTML_TEMPLATE = """
             fetch('/api/chat', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({content})
+                body: JSON.stringify({author: currentUser, content: content})
             })
             .then(res => res.json())
             .then(data => {
@@ -544,7 +656,7 @@ HTML_TEMPLATE = """
                 msgs.forEach(m => {
                     html += `<div class="chat-msg"><strong>${m.author}:</strong> ${m.content}</div>`;
                 });
-                box.innerHTML = html || '<div style="color:#94a3b8; font-size:0.85rem;">Nenhuma mensagem no chat.</div>';
+                box.innerHTML = html || '<div style="color:var(--text-muted); font-size:0.85rem;">Nenhuma mensagem no chat.</div>';
             });
         }
     </script>
@@ -553,7 +665,6 @@ HTML_TEMPLATE = """
 """
 
 
-# --- ROTAS DE AUTENTICAÇÃO E API ---
 @app.route('/')
 def index():
   return render_template_string(HTML_TEMPLATE)
@@ -585,7 +696,6 @@ def login():
     username = data.get('username')
     password = data.get('password')
 
-    # Credenciais de Administrador padrão (você pode alterar aqui)
     ADMIN_USER = 'admin'
     ADMIN_PASS = 'admin123'
 
@@ -658,15 +768,17 @@ def like_post(post_id):
 
 @app.route('/api/posts/<int:post_id>/comment', methods=['POST'])
 def add_comment(post_id):
-  if 'user' not in session:
-    return jsonify({'success': False, 'error': 'Não autenticado'}), 401
-
   data = request.get_json()
+  author = data.get('author') or 'Visitante'
+  content = data.get('content')
+  if not content:
+    return jsonify({'success': False, 'error': 'Conteúdo vazio'}), 400
+
   conn = sqlite3.connect(DB_NAME)
   cursor = conn.cursor()
   cursor.execute(
       'INSERT INTO comments (post_id, author, content) VALUES (?, ?, ?)',
-      (post_id, session['user'], data['content']),
+      (post_id, author, content),
   )
   conn.commit()
   conn.close()
@@ -680,13 +792,15 @@ def manage_chat():
   cursor = conn.cursor()
 
   if request.method == 'POST':
-    if 'user' not in session:
-      return jsonify({'success': False, 'error': 'Não autenticado'}), 401
-
     data = request.get_json()
+    author = data.get('author') or 'Visitante'
+    content = data.get('content')
+    if not content:
+      return jsonify({'success': False, 'error': 'Mensagem vazia'}), 400
+
     cursor.execute(
         'INSERT INTO chat (author, content) VALUES (?, ?)',
-        (session['user'], data['content']),
+        (author, content),
     )
     conn.commit()
     conn.close()
