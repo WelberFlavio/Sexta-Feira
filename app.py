@@ -9,7 +9,7 @@ app.secret_key = 'sua_chave_secreta_super_segura_aqui'
 DB_NAME = 'database.db'
 
 
-# Inicializa o Banco de Dados SQLite
+# Inicializa o Base de Dados SQLite
 def init_db():
   conn = sqlite3.connect(DB_NAME)
   cursor = conn.cursor()
@@ -413,9 +413,9 @@ HTML_TEMPLATE = """
     <!-- TELA DE LOGIN ESTILIZADA -->
     <div id="login-screen">
         <div class="login-wrapper">
-            <!-- Lado esquerdo com a Logo Local do Projeto -->
+            <!-- Lado esquerdo com a Logo Exata -->
             <div class="login-image-side">
-                <img src="/static/logo.png" alt="ADEFS Logo">
+                <img src="/static/ADEFS.jfif" alt="ADEFS Logo">
                 <h3>Assembleia de Deus</h3>
                 <p>Feira de Santana - ADEFS</p>
             </div>
